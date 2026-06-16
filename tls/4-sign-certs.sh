@@ -1,0 +1,32 @@
+#!/bin/bash
+
+set -euo pipefail
+
+# Directory where the CA cert, key, and the CSR is located.
+DIR=$HOME/NewPersonal/heimdall/kafka-deployment/out/tls
+# Validity of the output signed certificate.
+VALIDITY_DAYS=365
+# Name of the broker for which the cert will be signed.
+BROKER=kafka-broker-1
+
+# Domains and IPs for which the cert will be valid.
+SAN_EXT="
+[v3_req]
+subjectAltName = @alt_names
+
+[alt_names]
+DNS.1 = ${BROKER}
+DNS.2 = ${BROKER}.example.com
+DNS.3 = localhost
+IP.1  = 127.0.0.1
+"
+
+openssl x509 -req \
+  -CA    "$DIR/ca-cert" \
+  -CAkey "$DIR/ca-key" \
+  -in    "$DIR/$BROKER.csr" \
+  -out   "$DIR/$BROKER.crt" \
+  -days  $VALIDITY_DAYS \
+  -CAcreateserial \
+  -extfile <(echo "$SAN_EXT") \
+  -extensions v3_req
