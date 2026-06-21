@@ -6,8 +6,10 @@ set -euo pipefail
 DIR=$HOME/NewPersonal/heimdall/kafka-deployment/out/tls
 # Validity of the output signed certificate.
 VALIDITY_DAYS=365
-# Name of the broker for which the cert will be signed.
-BROKER=kafka-broker-1
+# Name of the broker for whom the cert and key will be generated.
+if [ -z "${BROKER}" ]; then
+    BROKER=broker-1
+fi
 
 # Domains and IPs for which the cert will be valid.
 SAN_EXT="

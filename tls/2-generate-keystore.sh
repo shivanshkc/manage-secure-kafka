@@ -10,7 +10,9 @@ PRIV_KEY_PASSWORD='secret-pass'
 # Validity period of the broker's self-signed cert.
 VALIDITY_DAYS=365
 # Name of the broker for whom the cert and key will be generated.
-BROKER=kafka-broker-1
+if [ -z "${BROKER}" ]; then
+    BROKER=broker-1
+fi
 
 keytool -keystore "$OUT_DIR/$BROKER.keystore.p12" \
     -storetype PKCS12 \

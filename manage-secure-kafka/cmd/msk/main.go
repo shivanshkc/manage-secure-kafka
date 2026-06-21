@@ -3,10 +3,11 @@ package main
 import (
 	"context"
 	"flag"
-	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/shivanshkc/msk/internal/handlers"
 )
 
 func main() {
@@ -34,7 +35,7 @@ func main() {
 		}
 
 		// Execute command.
-		if err := cmdRunBroker(ctx, *configPath, *brokerID); err != nil {
+		if err := handlers.RunBroker(ctx, *configPath, *brokerID); err != nil {
 			panic("error in command execution: " + err.Error())
 		}
 	case "setup-users":
@@ -43,7 +44,7 @@ func main() {
 		}
 
 		// Execute command.
-		if err := cmdSetupUsers(ctx, *configPath); err != nil {
+		if err := handlers.SetupUsers(ctx, *configPath); err != nil {
 			panic("error in command execution: " + err.Error())
 		}
 	case "setup-acls":
@@ -52,7 +53,7 @@ func main() {
 		}
 
 		// Execute command.
-		if err := cmdSetupACLs(ctx, *configPath); err != nil {
+		if err := handlers.SetupACLs(ctx, *configPath); err != nil {
 			panic("error in command execution: " + err.Error())
 		}
 	case "check-health":
@@ -61,30 +62,10 @@ func main() {
 		}
 
 		// Execute command.
-		if err := cmdCheckHealth(ctx, *configPath); err != nil {
+		if err := handlers.CheckHealth(ctx, *configPath); err != nil {
 			panic("error in command execution: " + err.Error())
 		}
 	default:
 		panic("unknown command provided: " + os.Args[1])
 	}
-}
-
-func cmdRunBroker(ctx context.Context, configPath, brokerID string) error {
-	fmt.Println("config", configPath, "broker", brokerID)
-	return nil
-}
-
-func cmdSetupUsers(ctx context.Context, configPath string) error {
-	fmt.Println("config", configPath)
-	return nil
-}
-
-func cmdSetupACLs(ctx context.Context, configPath string) error {
-	fmt.Println("config", configPath)
-	return nil
-}
-
-func cmdCheckHealth(ctx context.Context, configPath string) error {
-	fmt.Println("config", configPath)
-	return nil
 }

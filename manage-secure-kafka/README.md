@@ -59,7 +59,7 @@ Idempotent: adding an existing ACL is a no-op.
       "externalHost": "10.0.1.1",
       "dataVolumePath": "/opt/kafka/data/broker-1",
       "tls": {
-        "keystorePath": "/opt/kafka/secrets/kafka-broker-1.keystore.p12",
+        "keystorePath": "/opt/kafka/secrets/broker-1.keystore.p12",
         "keystorePassword": "secret-pass",
         "keyPassword": "secret-pass"
       }
@@ -135,9 +135,9 @@ Each entry creates a SCRAM-SHA-512 user via `setup-users`. The `acls` array defi
 ## Derived by the tool
 
 - `controller.quorum.voters` -- from brokers with `"controller"` in roles, using `internalHost` + controller port.
-- `super.users` -- `User:kafka-broker-{id}` for every broker.
+- `super.users` -- `User:broker-{id}` for every broker.
 - `ssl.principal.mapping.rules` -- extracts CN from certificate DN.
-- Container name -- `kafka-broker-{id}`.
+- Container name -- `broker-{id}`.
 - JAAS config -- generated and mounted automatically.
 - Docker port mappings -- from `ports` (or defaults) to container-internal ports 9093/9094/9095.
 
