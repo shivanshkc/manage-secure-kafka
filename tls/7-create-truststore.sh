@@ -8,7 +8,7 @@ DIR=$HOME/NewPersonal/heimdall/kafka-deployment/out/tls
 KEYSTORE_PASSWORD='secret-pass'
 
 # The truststore will be the same for all brokers.
-keytool -keystore "$DIR/kafka.truststore.p12" \
+keytool -keystore "$DIR/broker.truststore.p12" \
     -storetype PKCS12 \
     -alias  CARoot \
     -import -file "$DIR/ca-cert" \

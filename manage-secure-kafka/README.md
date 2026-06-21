@@ -48,7 +48,7 @@ Idempotent: adding an existing ACL is a no-op.
     "minInsyncReplicas": 2
   },
   "tls": {
-    "truststorePath": "/opt/kafka/secrets/kafka.truststore.p12",
+    "truststorePath": "/opt/kafka/secrets/broker.truststore.p12",
     "truststorePassword": "secret-pass"
   },
   "brokers": [
