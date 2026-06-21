@@ -1,10 +1,12 @@
 package handlers
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"path/filepath"
 
+	"github.com/docker/docker/pkg/stdcopy"
 	dockerlib "github.com/moby/moby/client"
 	"github.com/shivanshkc/msk/internal/config"
 )
@@ -46,4 +48,43 @@ func pullImage(ctx context.Context, docker *dockerlib.Client, image string) erro
 	}
 
 	return nil
+}
+
+// execInContainer executes the given command in the given container.
+func execInContainer(ctx context.Context, docker *dockerlib.Client, containerID string, cmd []string) (string, error) {
+	execResult, err := docker.ExecCreate(ctx, containerID, dockerlib.ExecCreateOptions{
+		Cmd:          cmd,
+		AttachStdout: true,
+		AttachStderr: true,
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to create exec: %w", err)
+	}
+
+	attachResult, err := docker.ExecAttach(ctx, execResult.ID, dockerlib.ExecAttachOptions{})
+	if err != nil {
+		return "", fmt.Errorf("failed to attach exec: %w", err)
+	}
+	defer attachResult.Close()
+
+	var buf bytes.Buffer
+	stdcopy.StdCopy(&buf, &buf, attachResult.Reader)
+
+	inspectResult, err := docker.ExecInspect(ctx, execResult.ID, dockerlib.ExecInspectOptions{})
+	if err != nil {
+		return buf.String(), fmt.Errorf("failed to inspect exec: %w", err)
+	}
+
+	if inspectResult.ExitCode != 0 {
+		return buf.String(), fmt.Errorf("command exited with code %d: %s", inspectResult.ExitCode, buf.String())
+	}
+
+	return buf.String(), nil
+}
+
+// mustAtoi converts the given string into int. It assumes that the string is a valid integer.
+func mustAtoi(s string) int {
+	var n int
+	fmt.Sscanf(s, "%d", &n)
+	return n
 }

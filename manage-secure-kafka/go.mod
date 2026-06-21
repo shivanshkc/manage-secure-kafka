@@ -3,6 +3,7 @@ module github.com/shivanshkc/msk
 go 1.26.1
 
 require (
+	github.com/docker/docker v28.5.2+incompatible
 	github.com/moby/moby/api v1.54.2
 	github.com/moby/moby/client v0.4.1
 )

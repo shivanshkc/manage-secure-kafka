@@ -57,10 +57,7 @@ func RunBroker(ctx context.Context, configPath, brokerID string) error {
 	}
 
 	// Parse broker ID to integer.
-	parsedID, err := strconv.Atoi(brokerID)
-	if err != nil {
-		return fmt.Errorf("failed to parse broker ID: %w", err)
-	}
+	parsedID := mustAtoi(brokerID)
 
 	// Run single broker.
 	slog.InfoContext(ctx, "running one broker", "id", parsedID)
