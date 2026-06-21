@@ -26,6 +26,10 @@ func main() {
 
 	// Add flgs.
 	configPath := flag.String("config", "", "Path to config file")
+
+	topicName := flag.String("topic", "",
+		"Name of the topic to create. Only applicable for the create-topic command")
+
 	brokerID := flag.String("broker", "",
 		`For run-broker: ID of the broker to run. Provide "all" to run all brokers.
 For setup-users and setup-acls: ID of the broker to use for the operation.
@@ -42,16 +46,18 @@ For check-health: ID of the broker to check. Provide "all" to check all brokers.
 	}
 
 	// Run the command.
-	if err := runCommand(ctx, os.Args[1], *configPath, *brokerID); err != nil {
+	if err := runCommand(ctx, os.Args[1], *configPath, *brokerID, *topicName); err != nil {
 		panic("failed to execute command: " + err.Error())
 	}
 }
 
 // runCommand runs the given command with the given arguments.
-func runCommand(ctx context.Context, command, configPath, brokerID string) error {
+func runCommand(ctx context.Context, command, configPath, brokerID, topicName string) error {
 	switch command {
 	case "run-broker":
 		return handlers.RunBroker(ctx, configPath, brokerID)
+	case "create-topic":
+		return handlers.CreateTopic(ctx, configPath, brokerID, topicName)
 	case "setup-users":
 		return handlers.SetupUsers(ctx, configPath, brokerID)
 	case "setup-acls":
