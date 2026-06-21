@@ -23,4 +23,4 @@ keytool -keystore "$OUT_DIR/$BROKER.keystore.p12" \
     -storepass "$KEYSTORE_PASSWORD" \
     -keypass   "$PRIV_KEY_PASSWORD" \
     -dname "CN=$BROKER,OU=heimdall,O=xrpscan,C=SG" \
-    -ext "SAN=dns:$BROKER,dns:$BROKER.example.com,dns:localhost,ip:127.0.0.1"
+    -ext "SAN=dns:$BROKER,dns:$BROKER.example.com,dns:localhost,dns:host.docker.internal,ip:127.0.0.1"

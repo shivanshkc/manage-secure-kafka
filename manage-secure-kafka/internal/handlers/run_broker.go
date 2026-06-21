@@ -37,13 +37,16 @@ func RunBroker(ctx context.Context, configPath, brokerID string) error {
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
+	slog.DebugContext(ctx, "successfully loaded config")
 
 	docker, err := dockerlib.New()
 	if err != nil {
 		return fmt.Errorf("failed to create docker client: %w", err)
 	}
+	slog.DebugContext(ctx, "successfully created the docker client")
 
 	if brokerID == "all" {
+		slog.InfoContext(ctx, "running all brokers")
 		if err := runAllBrokers(ctx, docker, conf); err != nil {
 			return fmt.Errorf("failed to run all brokers: %w", err)
 		}
@@ -59,6 +62,7 @@ func RunBroker(ctx context.Context, configPath, brokerID string) error {
 		return fmt.Errorf("broker ID should be in range [1, 9]")
 	}
 
+	slog.InfoContext(ctx, "running one broker", "id", parsedID)
 	if err := runOneBroker(ctx, docker, conf, parsedID); err != nil {
 		return fmt.Errorf("failed to run broker %d: %w", parsedID, err)
 	}
@@ -85,12 +89,14 @@ func runOneBroker(ctx context.Context, docker *dockerlib.Client, conf config.Con
 	// Convert to string for various concatenation operations below.
 	brokerIDStr := fmt.Sprintf("%d", brokerID)
 	brokerName := "broker-" + brokerIDStr
+	slog.InfoContext(ctx, "running one broker", "name", brokerName)
 
 	// Remove any old container with confirmation.
 	if err := removeWithConfirmation(ctx, docker, brokerName); err != nil {
 		return fmt.Errorf("error in old container removal: %w", err)
 	}
 
+	slog.InfoContext(ctx, "pulling the required image")
 	// Initiate image pull.
 	imagePullResponse, err := docker.ImagePull(ctx, kafkaImageName, dockerlib.ImagePullOptions{})
 	if err != nil {
@@ -101,6 +107,7 @@ func runOneBroker(ctx context.Context, docker *dockerlib.Client, conf config.Con
 	if err := imagePullResponse.Wait(ctx); err != nil {
 		return fmt.Errorf("image pull failed to complete: %w", err)
 	}
+	slog.InfoContext(ctx, "successfully pulled image")
 
 	// All brokers are super users.
 	var superUsers string
@@ -162,6 +169,11 @@ func runOneBroker(ctx context.Context, docker *dockerlib.Client, conf config.Con
 		},
 		Config: &container.Config{
 			Image: kafkaImageName,
+			ExposedPorts: network.PortSet{
+				port9093: struct{}{},
+				port9094: struct{}{},
+				port9095: struct{}{},
+			},
 			Env: []string{
 				"CLUSTER_ID=" + conf.Kafka.Cluster.ID,
 				"KAFKA_OPTS=-Djava.security.auth.login.config=/etc/kafka/secrets/jaas.conf",
@@ -192,7 +204,7 @@ func runOneBroker(ctx context.Context, docker *dockerlib.Client, conf config.Con
 				"KAFKA_LISTENER_NAME_EXTERNAL_SASL_ENABLED_MECHANISMS=SCRAM-SHA-512",
 				// Authorization
 				"KAFKA_AUTHORIZER_CLASS_NAME=org.apache.kafka.metadata.authorizer.StandardAuthorizer",
-				"KAFKA_SSL_PRINCIPAL_MAPPING_RULES=RULE:^CN=(.*?),OU=.*$/$$1/,DEFAULT",
+				"KAFKA_SSL_PRINCIPAL_MAPPING_RULES=RULE:^CN=(.*?),OU=.*$/$1/,DEFAULT",
 				"KAFKA_SUPER_USERS=" + superUsers,
 				"KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND=false",
 				// Storage and replication.
@@ -209,6 +221,10 @@ func runOneBroker(ctx context.Context, docker *dockerlib.Client, conf config.Con
 	result, err := docker.ContainerCreate(ctx, containerCreateOptions)
 	if err != nil {
 		return fmt.Errorf("failed to create container: %w", err)
+	}
+
+	if len(result.Warnings) == 0 {
+		slog.InfoContext(ctx, "container created without any warnings")
 	}
 
 	// Log warnings if any.
@@ -250,10 +266,11 @@ func removeWithConfirmation(ctx context.Context, docker *dockerlib.Client, broke
 	}
 
 	if !alreadyExists {
+		slog.DebugContext(ctx, "no existing containers found")
 		return nil
 	}
 
-	fmt.Printf("A container with name %s already exists. Do you want to remove it? (y/n)\n", brokerName)
+	fmt.Printf("A container with name %s already exists. Do you want to remove it? (y/n): ", brokerName)
 	var answer string
 	fmt.Scanf("%s", &answer)
 
@@ -262,10 +279,12 @@ func removeWithConfirmation(ctx context.Context, docker *dockerlib.Client, broke
 		if _, err := docker.ContainerStop(ctx, brokerName, dockerlib.ContainerStopOptions{}); err != nil {
 			return fmt.Errorf("failed to stop the old container: %w", err)
 		}
+		slog.DebugContext(ctx, "container successfully stopped", "name", brokerName)
 
 		if _, err := docker.ContainerRemove(ctx, brokerName, dockerlib.ContainerRemoveOptions{}); err != nil {
 			return fmt.Errorf("failed to remove the old container: %w", err)
 		}
+		slog.InfoContext(ctx, "container successfully removed", "name", brokerName)
 
 		return nil
 	case "n", "no":

@@ -20,6 +20,7 @@ subjectAltName = @alt_names
 DNS.1 = ${BROKER}
 DNS.2 = ${BROKER}.example.com
 DNS.3 = localhost
+DNS.4 = host.docker.internal
 IP.1  = 127.0.0.1
 "
 
