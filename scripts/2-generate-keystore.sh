@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # Directory where the keystore will be generated.
-OUT_DIR=$HOME/NewPersonal/heimdall/kafka-deployment/out/tls
+OUT_DIR=$HOME/.secure-kafka/tls
 # Passwords for the keystore and the broker's private key.
 KEYSTORE_PASSWORD='secret-pass'
 PRIV_KEY_PASSWORD='secret-pass'

@@ -2,8 +2,7 @@
 out
 
 # Attached volumes
-volumes/*
-manage-secure-kafka/volumes/*
+volumes/
 
 # Compiled output
 bin
@@ -18,10 +17,7 @@ temp-*
 
 # Config
 config/*
-manage-secure-kafka/config/*
-
 !config/config.example.json
-!manage-secure-kafka/config/config.example.json
 
 
 # Profiling data

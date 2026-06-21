@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # Directory where the CA cert is located, and where the truststore will be created.
-DIR=$HOME/NewPersonal/heimdall/kafka-deployment/out/tls
+DIR=$HOME/.secure-kafka/tls
 # Password for the keystore.
 KEYSTORE_PASSWORD='secret-pass'
 

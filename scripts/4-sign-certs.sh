@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # Directory where the CA cert, key, and the CSR is located.
-DIR=$HOME/NewPersonal/heimdall/kafka-deployment/out/tls
+DIR=$HOME/.secure-kafka/tls
 # Validity of the output signed certificate.
 VALIDITY_DAYS=365
 # Name of the broker for whom the cert and key will be generated.
