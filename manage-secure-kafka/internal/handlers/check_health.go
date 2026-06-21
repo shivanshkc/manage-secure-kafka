@@ -4,6 +4,6 @@ import (
 	"context"
 )
 
-func CheckHealth(ctx context.Context, configPath string) error {
+func CheckHealth(ctx context.Context, configPath, brokerID string) error {
 	return nil
 }

@@ -4,6 +4,6 @@ import (
 	"context"
 )
 
-func SetupUsers(ctx context.Context, configPath string) error {
+func SetupUsers(ctx context.Context, configPath, brokerID string) error {
 	return nil
 }

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	"strconv"
 
 	dockerlib "github.com/moby/moby/client"
 	"github.com/shivanshkc/msk/internal/config"
@@ -47,19 +46,4 @@ func pullImage(ctx context.Context, docker *dockerlib.Client, image string) erro
 	}
 
 	return nil
-}
-
-// parseBrokerID parses the given string into an integer.
-// A broker ID should be between 1 and 9, both inclusive.
-func parseBrokerID(id string) (int, error) {
-	parsedID, err := strconv.Atoi(id)
-	if err != nil {
-		return 0, fmt.Errorf("failed to parse broker ID: %w", err)
-	}
-
-	if parsedID < 1 || parsedID > 9 {
-		return 0, fmt.Errorf("broker ID should be in range [1, 9]")
-	}
-
-	return parsedID, nil
 }

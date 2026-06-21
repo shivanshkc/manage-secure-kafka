@@ -4,6 +4,6 @@ import (
 	"context"
 )
 
-func SetupACLs(ctx context.Context, configPath string) error {
+func SetupACLs(ctx context.Context, configPath, brokerID string) error {
 	return nil
 }

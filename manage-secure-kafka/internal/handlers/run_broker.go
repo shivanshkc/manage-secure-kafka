@@ -57,7 +57,7 @@ func RunBroker(ctx context.Context, configPath, brokerID string) error {
 	}
 
 	// Parse broker ID to integer.
-	parsedID, err := parseBrokerID(brokerID)
+	parsedID, err := strconv.Atoi(brokerID)
 	if err != nil {
 		return fmt.Errorf("failed to parse broker ID: %w", err)
 	}
@@ -94,7 +94,7 @@ func runOneBroker(ctx context.Context, docker *dockerlib.Client, conf config.Con
 
 	// Remove any old container with confirmation.
 	if err := removeWithConfirmation(ctx, docker, brokerName); err != nil {
-		return fmt.Errorf("error in old container removal: %w", err)
+		return fmt.Errorf("failed to remove existing container: %w", err)
 	}
 
 	// Download container image.
