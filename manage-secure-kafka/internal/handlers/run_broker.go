@@ -33,18 +33,21 @@ var (
 )
 
 func RunBroker(ctx context.Context, configPath, brokerID string) error {
+	// All config.
 	conf, err := config.Load(configPath)
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 	slog.DebugContext(ctx, "successfully loaded config")
 
+	// Docker client.
 	docker, err := dockerlib.New()
 	if err != nil {
 		return fmt.Errorf("failed to create docker client: %w", err)
 	}
 	slog.DebugContext(ctx, "successfully created the docker client")
 
+	// Special case: If "all" is provided, run all brokers.
 	if brokerID == "all" {
 		slog.InfoContext(ctx, "running all brokers")
 		if err := runAllBrokers(ctx, docker, conf); err != nil {
@@ -53,15 +56,13 @@ func RunBroker(ctx context.Context, configPath, brokerID string) error {
 		return nil
 	}
 
-	parsedID, err := strconv.Atoi(brokerID)
+	// Parse broker ID to integer.
+	parsedID, err := parseBrokerID(brokerID)
 	if err != nil {
 		return fmt.Errorf("failed to parse broker ID: %w", err)
 	}
 
-	if parsedID < 1 || parsedID > 9 {
-		return fmt.Errorf("broker ID should be in range [1, 9]")
-	}
-
+	// Run single broker.
 	slog.InfoContext(ctx, "running one broker", "id", parsedID)
 	if err := runOneBroker(ctx, docker, conf, parsedID); err != nil {
 		return fmt.Errorf("failed to run broker %d: %w", parsedID, err)
@@ -96,16 +97,10 @@ func runOneBroker(ctx context.Context, docker *dockerlib.Client, conf config.Con
 		return fmt.Errorf("error in old container removal: %w", err)
 	}
 
+	// Download container image.
 	slog.InfoContext(ctx, "pulling the required image")
-	// Initiate image pull.
-	imagePullResponse, err := docker.ImagePull(ctx, kafkaImageName, dockerlib.ImagePullOptions{})
-	if err != nil {
+	if err := pullImage(ctx, docker, kafkaImageName); err != nil {
 		return fmt.Errorf("failed to pull kafka image: %w", err)
-	}
-
-	// Wait for completion.
-	if err := imagePullResponse.Wait(ctx); err != nil {
-		return fmt.Errorf("image pull failed to complete: %w", err)
 	}
 	slog.InfoContext(ctx, "successfully pulled image")
 
@@ -160,12 +155,11 @@ func runOneBroker(ctx context.Context, docker *dockerlib.Client, conf config.Con
 				port9095: []network.PortBinding{{HostPort: brokerIDStr + "9095"}},
 			},
 			RestartPolicy: container.RestartPolicy{Name: container.RestartPolicyUnlessStopped},
-			Binds: []string{
-				brokerConfig.TLS.KeystorePath + ":/etc/kafka/secrets/broker.keystore.p12:ro",
-				conf.Kafka.TLS.TruststorePath + ":/etc/kafka/secrets/broker.truststore.p12:ro",
-				filepath.Join(brokerConfig.VolumePath, "conf/jaas.conf") + ":/etc/kafka/secrets/jaas.conf:ro",
-				filepath.Join(brokerConfig.VolumePath, "data") + ":/var/lib/kafka/data",
-			},
+			Binds: getBrokerVolumeBinds(
+				brokerConfig.TLS.KeystorePath,
+				brokerConfig.VolumePath,
+				conf.Kafka.TLS.TruststorePath,
+			),
 		},
 		Config: &container.Config{
 			Image: kafkaImageName,
@@ -239,16 +233,6 @@ func runOneBroker(ctx context.Context, docker *dockerlib.Client, conf config.Con
 
 	slog.InfoContext(ctx, "container is running", "id", result.ID)
 	return nil
-}
-
-func getBrokerConfig(conf config.Config, brokerID int) (config.KafkaBrokerConfig, bool) {
-	for _, c := range conf.Kafka.Brokers {
-		if c.ID == brokerID {
-			return c, true
-		}
-	}
-
-	return config.KafkaBrokerConfig{}, false
 }
 
 func removeWithConfirmation(ctx context.Context, docker *dockerlib.Client, brokerName string) error {
