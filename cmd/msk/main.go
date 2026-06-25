@@ -38,7 +38,9 @@ For check-health: ID of the broker to check. Provide "all" to check all brokers.
 	// Here flag.Parse does not work because it parses from os.Args[1:]
 	// os.Args[1] is the command itself, which is not a flag argument so the parser stops before
 	// ever reaching the actual flags.
-	flag.CommandLine.Parse(os.Args[2:])
+	if err := flag.CommandLine.Parse(os.Args[2:]); err != nil {
+		panic("failed to parse flags: " + err.Error())
+	}
 
 	// Validate flag inputs.
 	if err := validateArgs(*configPath, *brokerID); err != nil {

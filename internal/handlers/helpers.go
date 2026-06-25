@@ -6,9 +6,10 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/shivanshkc/msk/internal/config"
+
 	"github.com/docker/docker/pkg/stdcopy"
 	dockerlib "github.com/moby/moby/client"
-	"github.com/shivanshkc/msk/internal/config"
 )
 
 // getBrokerVolumeBinds returns the volume binds for a Kafka broker.
@@ -68,7 +69,7 @@ func execInContainer(ctx context.Context, docker *dockerlib.Client, containerID 
 	defer attachResult.Close()
 
 	var buf bytes.Buffer
-	stdcopy.StdCopy(&buf, &buf, attachResult.Reader)
+	_, _ = stdcopy.StdCopy(&buf, &buf, attachResult.Reader)
 
 	inspectResult, err := docker.ExecInspect(ctx, execResult.ID, dockerlib.ExecInspectOptions{})
 	if err != nil {
@@ -85,6 +86,6 @@ func execInContainer(ctx context.Context, docker *dockerlib.Client, containerID 
 // mustAtoi converts the given string into int. It assumes that the string is a valid integer.
 func mustAtoi(s string) int {
 	var n int
-	fmt.Sscanf(s, "%d", &n)
+	_, _ = fmt.Sscanf(s, "%d", &n)
 	return n
 }

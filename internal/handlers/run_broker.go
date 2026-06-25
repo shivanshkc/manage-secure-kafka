@@ -253,7 +253,7 @@ func removeWithConfirmation(ctx context.Context, docker *dockerlib.Client, broke
 
 	fmt.Printf("A container with name %s already exists. Do you want to remove it? (y/n): ", brokerName)
 	var answer string
-	fmt.Scanf("%s", &answer)
+	_, _ = fmt.Scanf("%s", &answer)
 
 	switch strings.ToLower(answer) {
 	case "y", "yes":
