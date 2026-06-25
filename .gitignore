@@ -1,6 +1,9 @@
 # Generate crypto data.
 out
 
+# Attached volumes
+volumes/
+
 # Compiled output
 bin
 
@@ -15,6 +18,7 @@ temp-*
 # Config
 config/*
 !config/config.example.json
+
 
 # Profiling data
 pprof

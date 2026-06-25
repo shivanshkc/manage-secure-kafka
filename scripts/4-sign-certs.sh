@@ -3,11 +3,13 @@
 set -euo pipefail
 
 # Directory where the CA cert, key, and the CSR is located.
-DIR=$HOME/NewPersonal/heimdall/kafka-deployment/out/tls
+DIR=$HOME/.secure-kafka/tls
 # Validity of the output signed certificate.
 VALIDITY_DAYS=365
-# Name of the broker for which the cert will be signed.
-BROKER=kafka-broker-1
+# Name of the broker for whom the cert and key will be generated.
+if [ -z "${BROKER}" ]; then
+    BROKER=broker-1
+fi
 
 # Domains and IPs for which the cert will be valid.
 SAN_EXT="
@@ -18,6 +20,7 @@ subjectAltName = @alt_names
 DNS.1 = ${BROKER}
 DNS.2 = ${BROKER}.example.com
 DNS.3 = localhost
+DNS.4 = host.docker.internal
 IP.1  = 127.0.0.1
 "
 

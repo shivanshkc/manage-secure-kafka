@@ -3,7 +3,7 @@
 set -euo pipefail
 
 # Directory where the CA cert and key will be created.
-OUT_DIR=$HOME/NewPersonal/heimdall/kafka-deployment/out/tls
+OUT_DIR=$HOME/.secure-kafka/tls
 # Validity period for the CA's cert and key.
 VALIDITY_DAYS=365
 
