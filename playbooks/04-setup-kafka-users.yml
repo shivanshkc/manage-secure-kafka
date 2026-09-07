@@ -1,0 +1,135 @@
+---
+- name: Create Kafka topics, users, and ACLs
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+
+    - name: Create Kafka topics
+      ansible.builtin.command:
+        argv:
+          - podman
+          - exec
+          - kafka-broker
+          - /opt/kafka/bin/kafka-topics.sh
+          - --bootstrap-server
+          - "localhost:9094"
+          - --command-config
+          - /tmp/command.properties
+          - --create
+          - --topic
+          - "{{ item.name }}"
+          - --partitions
+          - "{{ item.partitions }}"
+          - --replication-factor
+          - "{{ item.replication_factor }}"
+          - --if-not-exists
+      loop: "{{ kafka_topics }}"
+      run_once: true
+      register: topic_result
+      changed_when: "'Created topic' in topic_result.stdout"
+      retries: 3
+      delay: 5
+      until: topic_result.rc == 0
+
+    - name: Create SCRAM users
+      ansible.builtin.command:
+        argv:
+          - podman
+          - exec
+          - kafka-broker
+          - /opt/kafka/bin/kafka-configs.sh
+          - --bootstrap-server
+          - "localhost:9094"
+          - --command-config
+          - /tmp/command.properties
+          - --alter
+          - --add-config
+          - "SCRAM-SHA-512=[password={{ item.password }}]"
+          - --entity-type
+          - users
+          - --entity-name
+          - "{{ item.username }}"
+      loop: "{{ kafka_clients }}"
+      run_once: true
+      register: user_result
+      changed_when: "'Completed' in user_result.stdout"
+
+    - name: Grant produce ACLs on topic
+      ansible.builtin.command:
+        argv:
+          - podman
+          - exec
+          - kafka-broker
+          - /opt/kafka/bin/kafka-acls.sh
+          - --bootstrap-server
+          - "localhost:9094"
+          - --command-config
+          - /tmp/command.properties
+          - --add
+          - --allow-principal
+          - "User:{{ item.0.username }}"
+          - --operation
+          - Write
+          - --operation
+          - Describe
+          - --topic
+          - "{{ item.1.topic }}"
+      loop: "{{ kafka_clients | subelements('acls') }}"
+      when: "'produce' in item.1.permissions"
+      run_once: true
+      register: produce_acl_result
+      changed_when: "'Adding ACLs' in produce_acl_result.stdout"
+
+    - name: Grant consume ACLs on topic
+      ansible.builtin.command:
+        argv:
+          - podman
+          - exec
+          - kafka-broker
+          - /opt/kafka/bin/kafka-acls.sh
+          - --bootstrap-server
+          - "localhost:9094"
+          - --command-config
+          - /tmp/command.properties
+          - --add
+          - --allow-principal
+          - "User:{{ item.0.username }}"
+          - --operation
+          - Read
+          - --operation
+          - Describe
+          - --topic
+          - "{{ item.1.topic }}"
+      loop: "{{ kafka_clients | subelements('acls') }}"
+      when: "'consume' in item.1.permissions"
+      run_once: true
+      register: consume_acl_result
+      changed_when: "'Adding ACLs' in consume_acl_result.stdout"
+
+    - name: Grant consume ACLs on consumer group
+      ansible.builtin.command:
+        argv:
+          - podman
+          - exec
+          - kafka-broker
+          - /opt/kafka/bin/kafka-acls.sh
+          - --bootstrap-server
+          - "localhost:9094"
+          - --command-config
+          - /tmp/command.properties
+          - --add
+          - --allow-principal
+          - "User:{{ item.0.username }}"
+          - --operation
+          - Read
+          - --group
+          - "{{ item.0.username }}-"
+          - --resource-pattern-type
+          - prefixed
+      loop: "{{ kafka_clients | subelements('acls') }}"
+      when: "'consume' in item.1.permissions"
+      run_once: true
+      register: group_acl_result
+      changed_when: "'Adding ACLs' in group_acl_result.stdout"

@@ -1,0 +1,8 @@
+---
+# Ansible Galaxy requirements file
+# Install with: ansible-galaxy install -r requirements.yml
+
+# No external collections required.
+# This playbook uses only ansible.builtin modules which are included with Ansible.
+
+collections: []

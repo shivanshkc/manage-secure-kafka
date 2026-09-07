@@ -1,0 +1,26 @@
+---
+- name: Install Podman
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+      when: ansible_facts["os_family"] == "Debian"
+
+    - name: Install Podman (Debian/Ubuntu)
+      ansible.builtin.apt:
+        name:
+          - podman
+        state: present
+      when: ansible_facts["os_family"] == "Debian"
+
+    - name: Verify Podman is installed
+      ansible.builtin.command: podman --version
+      changed_when: false
+      register: podman_version
+
+    - name: Print Podman version
+      ansible.builtin.debug:
+        msg: "Podman {{ podman_version.stdout }} installed successfully"

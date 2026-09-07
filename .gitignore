@@ -1,45 +1,38 @@
-# Generate crypto data.
-out
+# TLS certificates and keys
+*.key
+*.crt
+*.csr
+*.p12
+*.jks
+*.keystore
+*.truststore
+*.pem
+*.srl
 
-# Attached volumes
-volumes/
+# SSH keys
+*.pem
+*_rsa
+*_rsa.pub
 
-# Compiled output
-bin
-
-# IDE Metadata
-.idea
-.vscode
-
-# Generated data for tests
-tmp-*
-temp-*
-
-# Config
-config/*
-!config/config.example.json
-
-
-# Profiling data
-pprof
-
-# Logs
-logs
-.logs
+# Ansible
+*.retry
+.ansible/
 *.log
 
-# Binaries for programs and plugins
-*.exe
-*.exe~
-*.dll
-*.so
-*.dylib
+# Environment-specific configs (optional - uncomment if needed)
+# inventories/production/
 
-# Test binary, built with `go test -c`
-*.test
+# Vault password files
+.vault_pass
+.vault_password
 
-# Output of the go coverage tool, specifically when used with LiteIDE
-*.out
+# OS files
+.DS_Store
+Thumbs.db
 
-# Dependency directories
-vendor/
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~

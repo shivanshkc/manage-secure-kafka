@@ -1,0 +1,160 @@
+---
+- name: Run Kafka brokers
+  hosts: all
+  become: true
+  gather_facts: false
+
+  vars:
+    broker_id: "{{ groups['all'].index(inventory_hostname) + 1 }}"
+
+    controller_quorum_voters: >-
+      {% for host in groups['all'] -%}
+        {{ loop.index }}@{{ hostvars[host]['ansible_host'] }}:9093
+        {%- if not loop.last %},{% endif %}
+      {%- endfor %}
+
+    super_users: >-
+      {% for host in groups['all'] -%}
+        User:{{ host }}
+        {%- if not loop.last %};{% endif %}
+      {%- endfor %}
+
+  tasks:
+    - name: Pull Kafka image
+      ansible.builtin.command:
+        cmd: podman pull docker.io/apache/kafka:4.3.1
+      register: pull_result
+      changed_when: "'Pulling' in pull_result.stdout or 'Downloaded' in pull_result.stdout"
+
+    - name: Create Kafka data directory
+      ansible.builtin.file:
+        path: /var/lib/kafka/data
+        state: directory
+        mode: "0777"
+
+    - name: Create Kafka secrets directory
+      ansible.builtin.file:
+        path: /etc/kafka/secrets
+        state: directory
+        mode: "0777"
+
+    - name: Write JAAS config file
+      ansible.builtin.copy:
+        dest: /etc/kafka/secrets/jaas.conf
+        mode: "0644"
+        content: |
+          KafkaServer {
+              org.apache.kafka.common.security.scram.ScramLoginModule required;
+          };
+
+    - name: Stop and remove existing Kafka container
+      ansible.builtin.command:
+        cmd: podman rm -f kafka-broker
+      register: remove_result
+      failed_when: false
+      changed_when: remove_result.rc == 0
+
+    - name: Run Kafka broker container
+      ansible.builtin.command:
+        argv:
+          - podman
+          - run
+          - --detach
+          - --name
+          - kafka-broker
+          - --publish
+          - "9093:9093"
+          - --publish
+          - "9094:9094"
+          - --publish
+          - "9095:9095"
+          - --volume
+          - "/etc/kafka/tls/{{ inventory_hostname }}.keystore.p12:/etc/kafka/secrets/broker.keystore.p12:ro"
+          - --volume
+          - "/etc/kafka/tls/ca.crt:/etc/kafka/secrets/ca.crt:ro"
+          - --volume
+          - "/etc/kafka/secrets/jaas.conf:/etc/kafka/secrets/jaas.conf:ro"
+          - --volume
+          - "/var/lib/kafka/data:/var/lib/kafka/data:Z"
+          - --env
+          - "CLUSTER_ID={{ kafka_cluster_id }}"
+          - --env
+          - "KAFKA_OPTS=-Djava.security.auth.login.config=/etc/kafka/secrets/jaas.conf"
+          - --env
+          - "KAFKA_NODE_ID={{ broker_id }}"
+          - --env
+          - "KAFKA_PROCESS_ROLES=broker,controller"
+          - --env
+          - "KAFKA_CONTROLLER_QUORUM_VOTERS={{ controller_quorum_voters }}"
+          - --env
+          - "KAFKA_LISTENERS=CONTROLLER://:9093,INTERNAL://:9094,EXTERNAL://:9095"
+          - --env
+          - "KAFKA_ADVERTISED_LISTENERS=INTERNAL://{{ ansible_host }}:9094,EXTERNAL://{{ ansible_host }}:9095"
+          - --env
+          - "KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:SSL,INTERNAL:SSL,EXTERNAL:SASL_SSL"
+          - --env
+          - "KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER"
+          - --env
+          - "KAFKA_INTER_BROKER_LISTENER_NAME=INTERNAL"
+          - --env
+          - "KAFKA_SSL_KEYSTORE_LOCATION=/etc/kafka/secrets/broker.keystore.p12"
+          - --env
+          - "KAFKA_SSL_KEYSTORE_PASSWORD={{ keystore_password }}"
+          - --env
+          - "KAFKA_SSL_KEYSTORE_TYPE=PKCS12"
+          - --env
+          - "KAFKA_SSL_KEY_PASSWORD={{ keystore_password }}"
+          - --env
+          - "KAFKA_SSL_TRUSTSTORE_LOCATION=/etc/kafka/secrets/ca.crt"
+          - --env
+          - "KAFKA_SSL_TRUSTSTORE_TYPE=PEM"
+          - --env
+          - "KAFKA_LISTENER_NAME_CONTROLLER_SSL_CLIENT_AUTH=required"
+          - --env
+          - "KAFKA_LISTENER_NAME_INTERNAL_SSL_CLIENT_AUTH=required"
+          - --env
+          - "KAFKA_LISTENER_NAME_EXTERNAL_SSL_CLIENT_AUTH=none"
+          - --env
+          - "KAFKA_SASL_ENABLED_MECHANISMS=SCRAM-SHA-512"
+          - --env
+          - "KAFKA_LISTENER_NAME_EXTERNAL_SASL_ENABLED_MECHANISMS=SCRAM-SHA-512"
+          - --env
+          - "KAFKA_AUTHORIZER_CLASS_NAME=org.apache.kafka.metadata.authorizer.StandardAuthorizer"
+          - --env
+          - "KAFKA_SSL_PRINCIPAL_MAPPING_RULES=RULE:^.*CN=([^,]+).*$$/$1/,DEFAULT"
+          - --env
+          - "KAFKA_SUPER_USERS={{ super_users }}"
+          - --env
+          - "KAFKA_ALLOW_EVERYONE_IF_NO_ACL_FOUND=false"
+          - --env
+          - "KAFKA_LOG_DIRS=/var/lib/kafka/data"
+          - --env
+          - "KAFKA_NUM_PARTITIONS={{ kafka_num_partitions }}"
+          - --env
+          - "KAFKA_DEFAULT_REPLICATION_FACTOR={{ kafka_replication_factor }}"
+          - --env
+          - "KAFKA_MIN_INSYNC_REPLICAS={{ kafka_min_insync_replicas }}"
+          - --env
+          - "KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR={{ kafka_replication_factor }}"
+          - apache/kafka:4.3.1
+
+    - name: Write SSL command config in container
+      ansible.builtin.command:
+        argv:
+          - podman
+          - exec
+          - kafka-broker
+          - sh
+          - -c
+          - |
+            cat > /tmp/command.properties << 'EOF'
+            security.protocol=SSL
+            ssl.truststore.location=/etc/kafka/secrets/ca.crt
+            ssl.truststore.type=PEM
+            ssl.keystore.location=/etc/kafka/secrets/broker.keystore.p12
+            ssl.keystore.password={{ keystore_password }}
+            ssl.key.password={{ keystore_password }}
+            ssl.keystore.type=PKCS12
+            EOF
+      run_once: true
+      changed_when: false

@@ -1,0 +1,49 @@
+# =============================================================
+# TLS
+# =============================================================
+ca_cert_days: 3650
+broker_cert_days: 365
+keystore_password: secret-pass
+local_tls_dir: /tmp/kafka-tls
+
+# =============================================================
+# Cluster
+# =============================================================
+kafka_cluster_id: lVTckYCITwWSX_siiDBoaw
+kafka_num_partitions: 3
+kafka_replication_factor: 3
+kafka_min_insync_replicas: 2
+
+# =============================================================
+# Topics
+# =============================================================
+kafka_topics:
+  - name: heimdall-validations
+    partitions: "{{ kafka_num_partitions }}"
+    replication_factor: "{{ kafka_replication_factor }}"
+  - name: heimdall-ledger
+    partitions: "{{ kafka_num_partitions }}"
+    replication_factor: "{{ kafka_replication_factor }}"
+
+# =============================================================
+# Clients (SASL users + ACLs)
+# =============================================================
+kafka_clients:
+  - username: heimdall-observer
+    password: secret123
+    acls:
+      - topic: heimdall-validations
+        permissions:
+          - produce
+      - topic: heimdall-ledger
+        permissions:
+          - produce
+  - username: heimdall-ingestor
+    password: secret123
+    acls:
+      - topic: heimdall-validations
+        permissions:
+          - consume
+      - topic: heimdall-ledger
+        permissions:
+          - consume

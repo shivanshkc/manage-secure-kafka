@@ -1,0 +1,116 @@
+---
+# =============================================================
+# Play 1: Generate all TLS material on the control machine
+# =============================================================
+- name: Generate Kafka TLS certificates and stores
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  tasks:
+    - name: Create local TLS output directory
+      ansible.builtin.file:
+        path: "{{ local_tls_dir }}"
+        state: directory
+        mode: "0700"
+
+    - name: Generate CA private key
+      ansible.builtin.command:
+        cmd: >
+          openssl genrsa -out {{ local_tls_dir }}/ca.key 4096
+        creates: "{{ local_tls_dir }}/ca.key"
+
+    - name: Generate CA certificate
+      ansible.builtin.command:
+        cmd: >
+          openssl req -new -x509
+          -key {{ local_tls_dir }}/ca.key
+          -sha256
+          -days {{ ca_cert_days }}
+          -out {{ local_tls_dir }}/ca.crt
+          -subj "/CN=kafka-ca/O=my-org"
+        creates: "{{ local_tls_dir }}/ca.crt"
+
+    - name: Generate broker private key
+      ansible.builtin.command:
+        cmd: >
+          openssl genrsa
+          -out {{ local_tls_dir }}/{{ item }}.key 4096
+        creates: "{{ local_tls_dir }}/{{ item }}.key"
+      loop: "{{ groups['all'] }}"
+
+    - name: Generate broker CSR
+      ansible.builtin.command:
+        cmd: >
+          openssl req -new
+          -key {{ local_tls_dir }}/{{ item }}.key
+          -out {{ local_tls_dir }}/{{ item }}.csr
+          -subj "/CN={{ item }}/O=my-org"
+        creates: "{{ local_tls_dir }}/{{ item }}.csr"
+      loop: "{{ groups['all'] }}"
+
+    - name: Create SAN extensions file for each broker
+      ansible.builtin.copy:
+        dest: "{{ local_tls_dir }}/{{ item }}.ext"
+        # Here, localhost and 127.0.0.1 are required for running commands from within the broker.
+        content: |
+          subjectAltName=IP:{{ hostvars[item]['ansible_host'] }},DNS:localhost,IP:127.0.0.1
+      loop: "{{ groups['all'] }}"
+
+    - name: Sign broker certificate with CA
+      ansible.builtin.command:
+        cmd: >
+          openssl x509 -req
+          -in {{ local_tls_dir }}/{{ item }}.csr
+          -CA {{ local_tls_dir }}/ca.crt
+          -CAkey {{ local_tls_dir }}/ca.key
+          -CAcreateserial
+          -out {{ local_tls_dir }}/{{ item }}.crt
+          -days {{ broker_cert_days }}
+          -sha256
+          -extfile {{ local_tls_dir }}/{{ item }}.ext
+        creates: "{{ local_tls_dir }}/{{ item }}.crt"
+      loop: "{{ groups['all'] }}"
+
+    - name: Create broker PKCS12 keystore
+      ansible.builtin.command:
+        cmd: >
+          openssl pkcs12 -export
+          -in {{ local_tls_dir }}/{{ item }}.crt
+          -inkey {{ local_tls_dir }}/{{ item }}.key
+          -chain -CAfile {{ local_tls_dir }}/ca.crt
+          -out {{ local_tls_dir }}/{{ item }}.keystore.p12
+          -passout pass:{{ keystore_password }}
+          -name {{ item }}
+          -certpbe AES-256-CBC
+          -keypbe AES-256-CBC
+          -macalg SHA256
+        creates: "{{ local_tls_dir }}/{{ item }}.keystore.p12"
+      loop: "{{ groups['all'] }}"
+
+# =============================================================
+# Play 2: Distribute the right files to each broker
+# =============================================================
+- name: Distribute TLS material to Kafka brokers
+  hosts: all
+  become: true
+  gather_facts: false
+
+  tasks:
+    - name: Create remote TLS directory
+      ansible.builtin.file:
+        path: "/etc/kafka/tls"
+        state: directory
+        mode: "0777"
+
+    - name: Copy CA certificate to broker
+      ansible.builtin.copy:
+        src: "{{ local_tls_dir }}/ca.crt"
+        dest: "/etc/kafka/tls/ca.crt"
+        mode: "0644"
+
+    - name: Copy broker keystore
+      ansible.builtin.copy:
+        src: "{{ local_tls_dir }}/{{ inventory_hostname }}.keystore.p12"
+        dest: "/etc/kafka/tls/{{ inventory_hostname }}.keystore.p12"
+        mode: "0644"

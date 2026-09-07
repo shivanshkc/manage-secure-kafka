@@ -1,0 +1,15 @@
+---
+# Master playbook to deploy Kafka cluster
+# Usage: ansible-playbook playbooks/site.yml
+
+- name: Setup Podman
+  import_playbook: 01-setup-podman.yml
+
+- name: Generate and distribute TLS certificates
+  import_playbook: 02-setup-tls.yml
+
+- name: Start Kafka brokers
+  import_playbook: 03-setup-kafka.yml
+
+- name: Create topics, users, and ACLs
+  import_playbook: 04-setup-kafka-users.yml
