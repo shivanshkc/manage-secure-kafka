@@ -1,0 +1,103 @@
+---
+- name: Run XRPLD
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Pull XRPLD image for ARM64
+      ansible.builtin.command:
+        cmd: podman pull docker.io/xrpllabsofficial/xrpld:3.3.0
+      register: pull_result
+      changed_when: "'Pulling' in pull_result.stdout or 'Downloaded' in pull_result.stdout"
+
+    - name: Create XRPLD config directory
+      ansible.builtin.file:
+        path: /etc/xrpld/config
+        state: directory
+        mode: "0777"
+
+    - name: Create XRPLD data directory
+      ansible.builtin.file:
+        path: /var/lib/xrpld/data
+        state: directory
+        mode: "0777"
+
+    - name: Write XRPLD config file
+      ansible.builtin.copy:
+        dest: /etc/xrpld/config/xrpld.cfg
+        mode: "0644"
+        content: |
+          [server]
+          port_peer
+          port_ws_admin
+          port_rpc_public
+
+          [port_peer]
+          port = 51235       # rippled needs this port to talk to its peers in the network.
+          ip = 0.0.0.0
+          protocol = peer
+
+          [port_ws_admin]
+          port = 6006        # For listening to streams such a validations and ledger.
+          ip = 0.0.0.0
+          protocol = ws
+
+          [port_rpc_public]
+          port = 5005         # For JSON-RPC calls over http.
+          ip = 0.0.0.0
+          protocol = http
+
+          [node_db]
+          type = NuDB
+          path = /var/lib/rippled/db/nudb
+
+          [database_path]
+          /var/lib/rippled/db
+
+          [debug_logfile]
+          /var/log/rippled/debug.log
+
+          [sntp_servers]
+          time.windows.com
+          time.apple.com
+
+          [validators_file]
+          validators.txt
+
+    - name: Write XRPLD validators.txt file
+      ansible.builtin.copy:
+        dest: /etc/xrpld/config/validators.txt
+        mode: "0644"
+        content: |
+          [validator_list_sites]
+              https://vl.ripple.com
+
+          [validator_list_keys]
+              ED2677ABFFD1B33AC6FBC3062B71F1E8397C1505E1C42C64D11AD1B28FF73F4734
+
+    - name: Stop and remove existing XRPLD container
+      ansible.builtin.command:
+        cmd: podman rm -f xrpld
+      register: remove_result
+      failed_when: false
+      changed_when: remove_result.rc == 0
+
+    - name: Run XRPLD container
+      ansible.builtin.command:
+        argv:
+          - podman
+          - run
+          - --detach
+          - --name
+          - xrpld
+          - --publish
+          - "5005:5005"
+          - --publish
+          - "6006:6006"
+          - --publish
+          - "51235:51235"
+          - --volume
+          - "/etc/xrpld/config:/config/"
+          - --volume
+          - "/var/lib/xrpld/data:/var/lib/rippled/db"
+          - xrpllabsofficial/xrpld:3.3.0
